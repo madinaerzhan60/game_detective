@@ -1,0 +1,1748 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Судоку Детектив: Тайна Верного</title>
+  <script>
+    window.__imgFail = function (img) {
+      if (!img) return;
+      img.classList.add('hidden');
+      const wrap = img.parentElement;
+      if (!wrap) return;
+      const placeholder = wrap.querySelector('.placeholder');
+      if (placeholder) {
+        placeholder.classList.add('show');
+      }
+    };
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-dark: #1a0a00;
+      --bg-brown: #2c1810;
+      --gold: #d4a853;
+      --paper: #f5e6c8;
+      --paper-deep: #e8d5ad;
+      --brown-soft: #8b6914;
+      --red: #8b1a1a;
+      --ink: #2c1810;
+      --muted: rgba(245, 230, 200, 0.75);
+      --shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+      --font-head: 'IM Fell English SC', Georgia, serif;
+      --font-body: 'IM Fell English', Georgia, serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg-dark);
+      color: var(--paper);
+      font-family: var(--font-body);
+    }
+
+    h1, h2, h3, .title, .stamp, .card-name, .scene-title, .left-title, .ending-title {
+      font-family: var(--font-head);
+      letter-spacing: 0.08em;
+    }
+
+    p, .dialogue, .description, .clue-text, .quote, .subtitle, .card-role, .card-desc, .typewriter-block {
+      font-family: var(--font-body);
+    }
+
+    .italic { font-style: italic; }
+
+    .app { position: relative; width: 100%; height: 100%; }
+    .screen {
+      position: absolute;
+      inset: 0;
+      display: none;
+      overflow: hidden;
+    }
+    .screen.active { display: flex; }
+
+    .grain::before,
+    .grain::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+    .grain::before {
+      background:
+        repeating-linear-gradient(0deg, rgba(255,255,255,0.025) 0 1px, transparent 1px 4px),
+        repeating-linear-gradient(90deg, rgba(0,0,0,0.05) 0 1px, transparent 1px 6px);
+      opacity: 0.4;
+    }
+    .grain::after {
+      background:
+        radial-gradient(circle at 20% 20%, rgba(255,255,255,0.08), transparent 16%),
+        radial-gradient(circle at 80% 10%, rgba(139,26,26,0.08), transparent 18%),
+        radial-gradient(circle at 30% 80%, rgba(139,105,20,0.08), transparent 16%);
+      opacity: 0.4;
+    }
+
+    .btn {
+      border: 3px solid var(--brown-soft);
+      background: var(--bg-brown);
+      color: var(--gold);
+      padding: 0.9rem 1.4rem;
+      cursor: pointer;
+      letter-spacing: 0.12em;
+      box-shadow: var(--shadow);
+      transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
+    }
+    .btn:hover { transform: translateY(-2px); background: #8b1a1a; color: var(--paper); }
+
+    .skip-btn {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 9999;
+      border: 0;
+      background: rgba(20,10,0,0.55);
+      color: var(--gold);
+      padding: 0.8rem 1rem;
+      cursor: pointer;
+      letter-spacing: 0.08em;
+    }
+
+    .intro-screen {
+      background: #000;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    #introVideo {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .intro-placeholder {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: var(--gold);
+      font-family: var(--font-head);
+      font-size: clamp(2rem, 6vw, 5rem);
+      letter-spacing: 0.6em;
+      text-indent: 0.6em;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    .intro-placeholder.show { opacity: 1; }
+    .intro-copy {
+      position: relative;
+      z-index: 2;
+      width: min(960px, 92vw);
+      text-align: center;
+      color: var(--gold);
+      text-shadow: 0 0 18px rgba(0,0,0,0.85);
+    }
+    .intro-line {
+      min-height: 1.4em;
+      margin: 0.8rem 0;
+      font-size: clamp(1.1rem, 2.6vw, 1.8rem);
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+    .intro-line.show { opacity: 1; transform: translateY(0); }
+    .intro-title {
+      margin-top: 2rem;
+      font-size: clamp(2.5rem, 6vw, 5rem);
+      letter-spacing: 0.16em;
+      text-indent: 0.16em;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.8s ease, transform 0.8s ease;
+    }
+    .intro-title.show { opacity: 1; transform: translateY(0); }
+    .intro-subtitle {
+      margin-top: 0.35rem;
+      color: var(--paper);
+      font-style: italic;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.8s ease 0.2s, transform 0.8s ease 0.2s;
+    }
+    .intro-subtitle.show { opacity: 1; transform: translateY(0); }
+
+    .title-screen {
+      background: var(--bg-dark);
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      text-align: center;
+      position: relative;
+    }
+    .title-inner {
+      width: min(1000px, 96vw);
+      display: grid;
+      justify-items: center;
+      gap: 1.4rem;
+      position: relative;
+      z-index: 1;
+    }
+    .headline {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      letter-spacing: 0.2em;
+      text-indent: 0.2em;
+      color: var(--gold);
+      padding-bottom: 0.7rem;
+      border-bottom: 2px solid var(--brown-soft);
+      animation: slideDown 0.8s ease-out both;
+    }
+    .title-sub {
+      color: var(--paper);
+      font-style: italic;
+      opacity: 0;
+      animation: fadeIn 0.8s ease forwards;
+      animation-delay: 1s;
+    }
+    .badge-star {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      border: 4px solid var(--gold);
+      position: relative;
+      opacity: 0;
+      animation: fadeIn 0.8s ease forwards;
+      animation-delay: 1.5s;
+    }
+    .badge-star::before,
+    .badge-star::after {
+      content: "";
+      position: absolute;
+      inset: 20px;
+      clip-path: polygon(50% 0%, 61% 34%, 98% 35%, 68% 57%, 79% 92%, 50% 71%, 21% 92%, 32% 57%, 2% 35%, 39% 34%);
+      background: var(--gold);
+    }
+    .badge-star::after {
+      inset: 44px;
+      clip-path: circle(50% at 50% 50%);
+      background: var(--bg-dark);
+    }
+
+    .dossier-screen {
+      background: linear-gradient(180deg, #241208, #180700);
+      padding: 1.2rem;
+      flex-direction: column;
+    }
+    .stamp-title {
+      display: inline-block;
+      color: var(--red);
+      border: 4px solid var(--red);
+      padding: 0.35rem 1rem;
+      transform: rotate(-7deg);
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      background: rgba(245,230,200,0.04);
+      box-shadow: 0 0 0 6px rgba(139,26,26,0.05);
+    }
+    .dossier-body {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 0.95fr 1.05fr;
+      gap: 1rem;
+      margin-top: 1rem;
+      min-height: 0;
+    }
+    .portrait-wrap,
+    .paper-card {
+      border: 4px solid var(--brown-soft);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      position: relative;
+    }
+    .portrait-wrap {
+      background: linear-gradient(180deg, rgba(20,10,0,0.95), rgba(44,24,16,0.96));
+      display: grid;
+      place-items: center;
+      min-height: 460px;
+    }
+    .portrait-wrap img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      filter: sepia(0.45) contrast(1.05);
+    }
+    .placeholder {
+      position: absolute;
+      inset: 0;
+      display: none;
+      place-items: center;
+      padding: 1rem;
+      text-align: center;
+      color: var(--gold);
+      background: linear-gradient(135deg, rgba(44,24,16,0.96), rgba(26,10,0,0.96));
+      font-family: var(--font-head);
+      letter-spacing: 0.12em;
+    }
+    .placeholder.show { display: grid; }
+    .paper-card {
+      background: linear-gradient(180deg, #f7ead0, #efe0bc 55%, #e5d1a9);
+      color: var(--ink);
+      padding: 1.3rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      font-size: 1.15rem;
+      line-height: 1.7;
+      overflow: auto;
+    }
+    .dossier-progress {
+      margin-top: auto;
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      flex-wrap: wrap;
+    }
+    .dots { letter-spacing: 0.2em; font-size: 1.2rem; }
+
+    .suspects-screen {
+      background: linear-gradient(180deg, #1a0a00, #241208);
+      padding: 1.2rem;
+      overflow: auto;
+      align-items: center;
+      justify-content: center;
+    }
+    .suspects-shell {
+      width: min(1220px, 98vw);
+      display: grid;
+      gap: 1rem;
+      align-content: start;
+      color: var(--paper);
+    }
+    .suspects-header { text-align: center; }
+    .suspects-title {
+      margin: 0;
+      color: var(--gold);
+      font-size: clamp(2.1rem, 5vw, 4rem);
+      letter-spacing: 0.2em;
+      text-indent: 0.2em;
+    }
+    .suspects-subtitle { color: var(--paper); font-style: italic; margin-top: 0.4rem; }
+    .suspects-divider {
+      display: flex; align-items: center; justify-content: center; gap: 0.8rem; color: var(--gold); letter-spacing: 0.25em;
+    }
+    .suspects-divider::before, .suspects-divider::after {
+      content: ""; width: min(180px, 22vw); height: 2px; background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    }
+    .suspects-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(180px, 1fr));
+      gap: 1rem;
+    }
+    .suspects-card {
+      position: relative;
+      min-height: 320px;
+      background: var(--paper);
+      color: var(--ink);
+      border: 4px double var(--bg-brown);
+      box-shadow: var(--shadow);
+      padding: 0.7rem;
+      display: grid;
+      grid-template-rows: 156px auto 1fr;
+      gap: 0.45rem;
+      overflow: hidden;
+      transform: translateY(16px);
+      opacity: 0;
+      animation: fadeInUp 0.7s ease forwards;
+    }
+    .suspects-card::before,
+    .suspects-card::after {
+      content: "✦";
+      position: absolute;
+      color: var(--gold);
+      font-size: 1rem;
+    }
+    .suspects-card::before { top: 8px; left: 8px; }
+    .suspects-card::after { bottom: 8px; right: 8px; }
+    .suspects-card img {
+      width: 100%;
+      height: 156px;
+      object-fit: contain;
+      filter: sepia(0.35) contrast(1.05);
+      background: rgba(44,24,16,0.05);
+      border: 2px solid rgba(44,24,16,0.2);
+    }
+    .card-name {
+      text-align: center;
+      font-size: 1.18rem;
+      line-height: 1.2;
+      color: var(--ink);
+    }
+    .card-role {
+      text-align: center;
+      color: var(--brown-soft);
+      font-style: italic;
+    }
+    .card-desc {
+      text-align: center;
+      line-height: 1.45;
+      color: var(--ink);
+    }
+    .suspects-footer { display: grid; place-items: center; }
+
+    .game-screen {
+      background: var(--bg-dark);
+      flex-direction: column;
+      min-height: 0;
+    }
+    .main-layout {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 50% 50%;
+    }
+    .left-panel {
+      background: linear-gradient(180deg, #1a0a00, #241208);
+      border-right: 4px solid var(--brown-soft);
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+      min-height: 0;
+      overflow: auto;
+      align-items: center;
+    }
+    .left-title {
+      align-self: flex-start;
+      color: var(--gold);
+      font-size: 1.15rem;
+      letter-spacing: 0.18em;
+      text-indent: 0.18em;
+      margin: 0;
+    }
+    .scene-progressline {
+      width: min(100%, 470px);
+      display: grid;
+      gap: 0.2rem;
+      justify-items: center;
+      color: var(--paper);
+    }
+    .scene-progress {
+      color: var(--gold);
+      font-size: 1.05rem;
+      letter-spacing: 0.18em;
+      text-align: center;
+    }
+    .scene-progress .dot-solved { color: var(--gold); }
+    .scene-progress .dot-current { color: #b32121; }
+    .scene-progress .dot-future { color: rgba(245,230,200,0.35); }
+    .scene-count { font-size: 0.95rem; }
+    .sudoku-wrap {
+      display: grid;
+      justify-items: center;
+      gap: 0.7rem;
+      width: 100%;
+    }
+    .sudoku-board {
+      position: relative;
+      width: fit-content;
+      padding: 8px;
+      background: #fff9ec;
+      border: 2px solid #d9c9a1;
+      box-shadow: none;
+      margin: 0 auto;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(9, 52px);
+      grid-template-rows: repeat(9, 52px);
+      gap: 0;
+      width: fit-content;
+      height: fit-content;
+    }
+    .cell {
+      width: 52px;
+      height: 52px;
+      display: grid;
+      place-items: center;
+      background: #fffdf6;
+      color: var(--ink);
+      font-size: 1.45rem;
+      font-weight: bold;
+      border: 1px solid #d7c49b;
+      user-select: none;
+      cursor: pointer;
+      position: relative;
+    }
+    .candidates {
+      position: absolute;
+      inset: 6px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 0px;
+      font-size: 0.55rem;
+      color: #7a5a3a;
+      align-items: center;
+      justify-items: center;
+      pointer-events: none;
+      z-index: 2;
+    }
+    .candidate { width:100%; height:100%; display:grid; place-items:center; opacity:0.95; }
+    .cell-value { font-size:1.45rem; color:var(--ink); position:absolute; inset:0; display:grid; place-items:center; z-index:3; }
+    .cell.block-edge-top { border-top: 2px solid #a68e63; }
+    .cell.block-edge-left { border-left: 2px solid #a68e63; }
+    .cell.block-edge-right { border-right: 2px solid #a68e63; }
+    .cell.block-edge-bottom { border-bottom: 2px solid #a68e63; }
+    /* Active 3x3 block emphasis */
+    .cell.active-block.block-edge-top { border-top: 4px solid #b8860b; }
+    .cell.active-block.block-edge-left { border-left: 4px solid #b8860b; }
+    .cell.active-block.block-edge-right { border-right: 4px solid #b8860b; }
+    .cell.active-block.block-edge-bottom { border-bottom: 4px solid #b8860b; }
+    .cell.hint { background: #fff7e0; color: #b44300; box-shadow: 0 0 8px rgba(180,67,0,0.18) inset; }
+    .cell.given { background: #fffdf6; color: #3a2a16; cursor: default; font-weight: 700; }
+    .cell.selected { border: 2px solid #9c7b3d !important; background: #fff4d7; z-index: 3; }
+    .cell.error { animation: shake 0.4s ease; border-color: var(--red); }
+    .cell.success { border-color: #4caf50; }
+    .grid-overlay {
+      position: absolute;
+      inset: 8px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      pointer-events: none;
+      z-index: 2;
+      display: none;
+    }
+    .block-overlay {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(245,230,200,0.92);
+      font-size: 2rem;
+      text-shadow: 0 0 12px rgba(0,0,0,0.45);
+      transition: opacity 0.2s ease, background 0.2s ease;
+    }
+    .block-overlay.locked { background: rgba(58,32,16,0.72); }
+    .block-overlay.completed { background: rgba(42,74,42,0.16); color: rgba(144,192,144,0.4); }
+    .block-overlay.active { background: transparent; color: transparent; }
+    .number-row {
+      width: min(100%, 470px);
+      display: grid;
+      grid-template-columns: repeat(9, 1fr);
+      gap: 0.35rem;
+    }
+    .number-btn {
+      border: 2px solid var(--brown-soft);
+      background: #efe0bc;
+      color: var(--ink);
+      padding: 0.55rem 0;
+      cursor: pointer;
+      transition: background 0.15s ease, transform 0.15s ease;
+    }
+    .number-btn:hover { background: #d8c08c; transform: translateY(-1px); }
+    .number-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .check-btn {
+      width: min(100%, 470px);
+      border: 3px solid var(--brown-soft);
+      background: var(--bg-brown);
+      color: var(--gold);
+      padding: 0.9rem 1.1rem;
+      letter-spacing: 0.15em;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+    }
+    .block-stamp {
+      display: none;
+      color: var(--red);
+      border: 3px solid var(--red);
+      padding: 0.35rem 1rem;
+      transform: rotate(-5deg);
+      background: rgba(245,230,200,0.9);
+      letter-spacing: 0.12em;
+    }
+    .block-stamp.show { display: inline-block; animation: stampIn 0.6s cubic-bezier(0.175,0.885,0.32,1.275) both; }
+
+    .right-panel {
+      position: relative;
+      min-height: 0;
+      overflow: hidden;
+      background: #000;
+    }
+    .scene-bg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: sepia(0.6) contrast(1.05) brightness(0.82);
+    }
+    .scene-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(26,10,0,0.2), rgba(26,10,0,0.55) 72%, rgba(26,10,0,0.88));
+      z-index: 1;
+    }
+    .scene-stage {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+    .scene-title {
+      position: absolute;
+      top: 0.8rem;
+      left: 0.8rem;
+      color: var(--gold);
+      font-size: 1.35rem;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+    }
+    .character-layer {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 4rem;
+      pointer-events: none;
+    }
+    .character-img {
+      max-width: 85%;
+      max-height: 72%;
+      object-fit: contain;
+      filter: sepia(0.2) contrast(1.05) drop-shadow(0 18px 20px rgba(0,0,0,0.35));
+    }
+    .character-img.left-lean { transform: translateX(-10%); }
+    .scene-cover {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(26,10,0,0.45);
+      color: var(--paper);
+      padding: 1rem;
+      text-align: center;
+      letter-spacing: 0.08em;
+    }
+    .scene-cover.hidden { display: none; }
+    .cover-card {
+      background: rgba(245,230,200,0.92);
+      color: var(--ink);
+      border: 4px solid var(--brown-soft);
+      padding: 1rem 1.2rem;
+      box-shadow: var(--shadow);
+      max-width: min(540px, 90%);
+    }
+    .dialogue-panel,
+    .final-panel {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 4;
+      background: linear-gradient(180deg, rgba(26,10,0,0), rgba(26,10,0,0.92) 22%, rgba(26,10,0,0.98));
+      padding: 1rem;
+      max-height: 72%;
+      overflow: auto;
+    }
+    .dialogue-panel.hidden, .final-panel.hidden { display: none; }
+    .speech-bubble {
+      background: rgba(245,230,200,0.96);
+      color: var(--ink);
+      border: 3px solid var(--brown-soft);
+      border-radius: 20px;
+      padding: 1rem;
+      box-shadow: var(--shadow);
+      line-height: 1.6;
+      position: relative;
+    }
+    .speech-bubble::after {
+      content: "";
+      position: absolute;
+      left: 44px;
+      bottom: -11px;
+      width: 22px;
+      height: 22px;
+      background: rgba(245,230,200,0.96);
+      border-right: 3px solid var(--brown-soft);
+      border-bottom: 3px solid var(--brown-soft);
+      transform: rotate(45deg);
+    }
+    .emotion-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.7rem;
+      border-radius: 999px;
+      color: #fff;
+      font-size: 0.88rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 0.6rem;
+    }
+    .emotion-spokoyno { background: #6d6a64; }
+    .emotion-nerv { background: #b76a22; }
+    .emotion-lzhet { background: #8b1a1a; }
+    .emotion-strah { background: #4f1111; }
+    .emotion-shepot { background: #2a5da8; }
+    .emotion-druzh { background: #50724f; }
+    .emotion-pyanyy { background: #7c4a1c; }
+    .emotion-holodno { background: #56565e; }
+    .emotion-vazhno { background: #8b6914; }
+    .emotion-tiho { background: #5f5f5f; }
+    .emotion-seryozno { background: #823939; }
+    .emotion-zhenskoe { background: #6d5a20; }
+    .emotion-mudro { background: #665b4a; }
+    .question-list, .hotspot-list, .suspect-list, .result-actions {
+      display: grid;
+      gap: 0.7rem;
+    }
+    .question-btn, .hotspot-btn, .suspect-card {
+      background: rgba(245,230,200,0.92);
+      color: var(--ink);
+      border: 3px solid var(--brown-soft);
+      box-shadow: var(--shadow);
+      cursor: pointer;
+      text-align: left;
+    }
+    .question-btn, .hotspot-btn {
+      padding: 0.9rem 1rem;
+      line-height: 1.35;
+    }
+    .question-btn.used, .hotspot-btn.used { opacity: 0.45; cursor: not-allowed; }
+    .clue-card {
+      align-self: flex-end;
+      width: min(420px, 100%);
+      background: var(--paper);
+      color: var(--ink);
+      border: 4px solid var(--red);
+      padding: 0.85rem 0.95rem;
+      box-shadow: var(--shadow);
+      transform: translateX(105%);
+      opacity: 0;
+      transition: transform 0.5s ease, opacity 0.5s ease;
+      position: relative;
+      margin-top: 0.7rem;
+    }
+    .clue-card.show { transform: translateX(0); opacity: 1; }
+    .clue-header, .result-clue-header { color: var(--red); font-weight: bold; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 0.35rem; }
+    .next-btn, .play-again-btn, .result-btn { border: 3px solid var(--brown-soft); background: var(--bg-brown); color: var(--gold); padding: 0.95rem 1.4rem; cursor: pointer; box-shadow: var(--shadow); letter-spacing: 0.12em; }
+    .next-btn:hover, .play-again-btn:hover, .result-btn:hover { background: #8b1a1a; color: var(--paper); }
+    .verdict-box {
+      background: rgba(245,230,200,0.92);
+      color: var(--ink);
+      border: 4px solid var(--brown-soft);
+      padding: 1rem;
+      box-shadow: var(--shadow);
+      line-height: 1.6;
+    }
+    .suspect-list { grid-template-columns: repeat(5, minmax(160px, 1fr)); }
+    .suspect-card {
+      display: grid;
+      grid-template-rows: 140px auto;
+      gap: 0.45rem;
+      justify-items: center;
+      align-items: center;
+      padding: 0.5rem;
+      text-align: center;
+    }
+    .suspect-card img { max-width: 100%; max-height: 140px; object-fit: contain; filter: sepia(0.35); }
+    .suspect-name { font-family: var(--font-head); font-size: 0.98rem; }
+    .accuse-text { color: var(--red); font-weight: bold; }
+    .confession { border-left: 4px solid var(--red); padding-left: 0.8rem; margin-top: 0.6rem; }
+    .accusation-screen, .ending-screen { background: var(--bg-dark); align-items: center; justify-content: center; padding: 1rem; }
+    .accusation-content, .ending-content {
+      width: min(1100px, 96vw);
+      height: 100%;
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      gap: 1rem;
+      overflow: hidden;
+    }
+    .big-stamp {
+      color: var(--red);
+      border: 6px solid var(--red);
+      padding: 1rem 1.8rem;
+      font-size: clamp(2rem, 5vw, 4rem);
+      letter-spacing: 0.3em;
+      text-indent: 0.3em;
+      box-shadow: 0 0 30px rgba(139,26,26,0.5);
+      background: rgba(245,230,200,0.04);
+      animation: stampIn 0.6s cubic-bezier(0.175,0.885,0.32,1.275) both;
+      text-align: center;
+    }
+    .accusation-inner {
+      width: 100%;
+      display: grid;
+      gap: 1rem;
+      min-height: 0;
+      max-height: 72%;
+    }
+    .clues-scroll {
+      overflow: auto;
+      display: grid;
+      gap: 0.8rem;
+      padding-right: 0.2rem;
+    }
+    .small-clue {
+      background: var(--paper);
+      color: var(--ink);
+      border: 3px solid var(--brown-soft);
+      padding: 0.8rem 0.9rem;
+      box-shadow: var(--shadow);
+    }
+    .ending-screen.law { background: linear-gradient(rgba(139,26,26,0.15), rgba(26,10,0,0.92)), var(--bg-dark); }
+    .ending-screen.conscience { background: linear-gradient(rgba(139,105,20,0.15), rgba(26,10,0,0.92)), var(--bg-dark); }
+    .ending-top {
+      border: 4px solid var(--red);
+      color: var(--red);
+      padding: 0.45rem 1rem;
+      transform: rotate(-6deg);
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      background: rgba(245,230,200,0.05);
+    }
+    .ending-top.gold { border-color: var(--gold); color: var(--gold); }
+    .ending-img {
+      max-height: 300px;
+      object-fit: contain;
+      filter: sepia(0.5);
+    }
+    .ending-lines { display: grid; gap: 0.55rem; width: min(860px, 100%); }
+    .ending-line { opacity: 0; transform: translateY(8px); color: var(--paper); font-size: 1.15rem; line-height: 1.6; }
+    .ending-line.show { animation: fadeIn 0.6s ease forwards; }
+    .ending-quote { font-style: italic; color: var(--paper); text-align: center; }
+    .rank-badge { background: rgba(245,230,200,0.92); color: var(--ink); border: 3px solid var(--brown-soft); padding: 0.65rem 1rem; box-shadow: var(--shadow); text-align: center; }
+
+    @keyframes slideDown { from { transform: translateY(-100px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-8px); } 40% { transform: translateX(8px); } 60% { transform: translateX(-8px); } 80% { transform: translateX(8px); } }
+    @keyframes stampIn { 0% { transform: scale(0) rotate(10deg); opacity: 0; } 70% { transform: scale(1.06) rotate(-3deg); opacity: 1; } 100% { transform: scale(1) rotate(-3deg); opacity: 1; } }
+    @keyframes slideRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    @media (max-width: 1100px) {
+      .suspects-grid { grid-template-columns: repeat(3, minmax(180px, 1fr)); }
+      .main-layout { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 900px) {
+      html, body { overflow: auto; }
+      .screen { position: relative; min-height: 100vh; height: auto; }
+      .dossier-body, .main-layout { grid-template-columns: 1fr; }
+      .left-panel { border-right: 0; border-bottom: 4px solid var(--brown-soft); }
+      .suspects-grid { grid-template-columns: repeat(2, minmax(160px, 1fr)); }
+      .suspect-list { grid-template-columns: repeat(2, minmax(160px, 1fr)); }
+    }
+
+    @media (max-width: 768px) {
+      .grid { grid-template-columns: repeat(9, 42px); grid-template-rows: repeat(9, 42px); }
+      .cell { width: 42px; height: 42px; font-size: 1.15rem; }
+      .number-row, .check-btn { width: min(100%, 430px); }
+      .suspects-grid, .suspect-list { grid-template-columns: 1fr; }
+      .intro-copy { padding: 1rem; }
+      .headline { letter-spacing: 0.08em; text-indent: 0.08em; }
+      .scene-bg { transform: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <button class="skip-btn" id="skipIntroBtn">ПРОПУСТИТЬ ИНТРО ›</button>
+
+    <section class="screen intro-screen active grain" id="introScreen" aria-label="Интро">
+      <video id="introVideo" src="intro.mp4" autoplay muted playsinline></video>
+      <div class="intro-placeholder" id="introPlaceholder">ИНТРО</div>
+      <div class="intro-copy">
+        <div class="intro-line" id="introLine1"></div>
+        <div class="intro-line" id="introLine2"></div>
+        <div class="intro-line" id="introLine3"></div>
+        <div class="intro-line" id="introLine4"></div>
+        <div class="intro-title" id="introTitle">СУДОКУ ДЕТЕКТИВ</div>
+        <div class="intro-subtitle" id="introSubtitle">ТАЙНА ВЕРНОГО</div>
+      </div>
+    </section>
+
+    <section class="screen title-screen grain" id="titleScreen" aria-label="Заставка">
+      <div class="title-inner">
+        <div class="headline">КУПЕЦЪ НАЙДЕНЪ МЕРТВЫМЪ</div>
+        <div class="title-sub">Верный, октябрь 1901 года</div>
+        <div class="badge-star" aria-hidden="true"></div>
+          <div style="margin-top:0.6rem;display:flex;gap:0.6rem;align-items:center;justify-content:center;">
+            <label for="difficultySelect" style="color:var(--paper);font-family:var(--font-body);">Сложность:</label>
+            <select id="difficultySelect" style="padding:0.4rem 0.6rem;border:2px solid #d7c49b;background:#fffdf6;color:var(--ink);">
+              <option value="easy">Лёгкая</option>
+              <option value="medium">Средняя</option>
+              <option value="hard">Сложная</option>
+            </select>
+          </div>
+        <button class="btn" id="startInvestigationBtn">НАЧАТЬ РАССЛЕДОВАНИЕ</button>
+      </div>
+    </section>
+
+    <section class="screen dossier-screen grain" id="dossierScreen" aria-label="Дело">
+      <div class="stamp-title">ДЕЛО №47 — ОТРАВЛЕНИЕ</div>
+      <div class="dossier-body">
+        <div class="portrait-wrap">
+          <img src="img-pakhomov.png" alt="Пахомов" id="dossierImage" onerror="window.__imgFail(this)" />
+          <div class="placeholder" id="dossierPlaceholder">НИКОЛАЙ ПАХОМОВ</div>
+        </div>
+        <div class="paper-card">
+          <div class="typewriter-block">
+            «ЖЕРТВА: Николай Пахомов, купец 1-й гильдии»<br />
+            «ОБНАРУЖЕН: 14 октября 1901, дом на Торговой улице»<br />
+            «ПРИЧИНА СМЕРТИ: Отравление. Яд в чае.»<br />
+            «СЛЕДОВАТЕЛЬ: Айдархан Сейткали»
+          </div>
+          <div class="dossier-progress">
+            <div>Улика <span id="dossierClueCount">0</span> из 9</div>
+            <div class="dots" id="dossierDots">○○○○○○○○○</div>
+          </div>
+          <button class="btn" id="beginCaseBtn">ПРИСТУПИТЬ К РАССЛЕДОВАНИЮ</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen suspects-screen grain" id="suspectsScreen" aria-label="Подозреваемые">
+      <div class="suspects-shell">
+        <div class="suspects-header">
+          <h1 class="suspects-title">ПОДОЗРЕВАЕМЫЕ</h1>
+          <div class="suspects-subtitle">Верный, 1901 год. Пятеро имели мотив.</div>
+        </div>
+        <div class="suspects-divider">✦</div>
+        <div class="suspects-grid">
+          <article class="suspects-card" style="animation-delay:0s;">
+            <img src="img-varvara.png" alt="Варвара Пахомова" onerror="window.__imgFail(this)" />
+            <div class="card-name">ВАРВАРА ПАХОМОВА</div>
+            <div class="card-role">Вдова. 26 лет.</div>
+            <div class="card-desc">Приехала из Ташкента. Глаза сухие. Слишком сухие.</div>
+          </article>
+          <article class="suspects-card" style="animation-delay:0.2s;">
+            <img src="img-bay.png" alt="Мухамеджан-бай" onerror="window.__imgFail(this)" />
+            <div class="card-name">МУХАМЕДЖАН-БАЙ</div>
+            <div class="card-role">Торговец скотом. 60 лет.</div>
+            <div class="card-desc">Потерял 300 голов скота из-за жертвы. Улыбается. Глаза — нет.</div>
+          </article>
+          <article class="suspects-card" style="animation-delay:0.4s;">
+            <img src="img-lazarev.png" alt="Поручик Лазарев" onerror="window.__imgFail(this)" />
+            <div class="card-name">ПОРУЧИК ЛАЗАРЕВ</div>
+            <div class="card-role">Царский офицер. 33 года.</div>
+            <div class="card-desc">Должен жертве крупную сумму. Любит выпить.</div>
+          </article>
+          <article class="suspects-card" style="animation-delay:0.6s;">
+            <img src="img-fatima.png" alt="Фатима" onerror="window.__imgFail(this)" />
+            <div class="card-name">ФАТИМА</div>
+            <div class="card-role">Служанка. 19 лет.</div>
+            <div class="card-desc">Знает всё. Говорит мало. Боится чего-то.</div>
+          </article>
+          <article class="suspects-card" style="animation-delay:0.8s;">
+            <img src="img-ryabov.png" alt="Аркадий Рябов" onerror="window.__imgFail(this)" />
+            <div class="card-name">АРКАДИЙ РЯБОВ</div>
+            <div class="card-role">Аптекарь. 50 лет.</div>
+            <div class="card-desc">Единственный аптекарь в городе. Нервничает.</div>
+          </article>
+        </div>
+        <div class="suspects-footer">
+          <button class="btn" id="startCaseFromSuspectsBtn">НАЧАТЬ РАССЛЕДОВАНИЕ →</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen game-screen" id="gameScreen" aria-label="Расследование">
+      <div class="main-layout">
+        <div class="left-panel">
+          <h2 class="left-title">СУДОКУ ДЕТЕКТИВ</h2>
+          <div class="scene-progressline">
+            <div class="scene-progress" id="topDots">● ○ ○ ○ ○ ○ ○ ○ ○</div>
+            <div class="scene-count" id="topCount">Улика 0 из 9</div>
+          </div>
+          <div class="sudoku-wrap">
+            <div class="sudoku-board">
+              <div class="grid" id="sudokuGrid"></div>
+              <div class="grid-overlay" id="gridOverlay"></div>
+            </div>
+            <div class="number-row" id="numberRow"></div>
+            <div style="display:flex;gap:0.6rem;margin-top:0.6rem;align-items:center;">
+              <button class="check-btn" id="checkBtn">ПРОВЕРИТЬ</button>
+              <button class="btn" id="hintBtn" style="background:#efe0bc;color:var(--ink);border:2px solid var(--brown-soft);">ПОДСКАЗКА</button>
+              <button class="btn" id="notesToggleBtn" style="background:transparent;color:var(--gold);border:2px dashed rgba(245,230,200,0.12);">ЗАМЕТКИ</button>
+              <div id="pencilIndicator" style="color:var(--gold);font-size:0.95rem;display:none;margin-left:0.4rem;">Режим заметок: ВКЛ</div>
+            </div>
+            <div class="block-stamp" id="blockStamp">УЛИКА ПОЛУЧЕНА</div>
+          </div>
+        </div>
+
+        <div class="right-panel">
+          <img class="scene-bg" id="sceneBg" src="bg-study.jpg" alt="Фон сцены" onerror="window.__imgFail(this)" />
+          <div class="scene-overlay"></div>
+          <div class="scene-stage">
+            <div class="scene-title" id="topSceneName">Место преступления</div>
+            <div class="character-layer">
+              <img class="character-img" id="characterImg" alt="Персонаж" onerror="window.__imgFail(this)" />
+              <div class="placeholder" id="characterPlaceholder">ПЕРСОНАЖ</div>
+            </div>
+            <div class="scene-cover" id="sceneCover">
+              <div class="cover-card" id="sceneCoverText">Реши блок судоку →</div>
+            </div>
+            <div class="dialogue-panel hidden" id="dialoguePanel">
+              <div class="emotion-tag hidden" id="emotionTag"></div>
+              <div class="speech-bubble" id="speechBubble"></div>
+              <div class="question-list" id="questionList"></div>
+              <div class="clue-card" id="clueCard">
+                <div class="clue-header" id="clueHeader">УЛИКА №1</div>
+                <div id="clueText"></div>
+              </div>
+              <button class="next-btn hidden" id="nextSceneBtn">СЛЕДУЮЩАЯ УЛИКА →</button>
+            </div>
+            <div class="final-panel hidden" id="finalPanel">
+              <div class="speech-bubble" id="finalSpeech">Выберите подозреваемого.</div>
+              <div class="suspect-list" id="suspectList"></div>
+              <div class="question-list hidden" id="finalChoiceRow">
+                <div class="speech-bubble" id="finalAccuseText"></div>
+                <div class="speech-bubble hidden" id="finalConfessionText"></div>
+                <button class="next-btn hidden" id="accusationBtn">ПЕРЕЙТИ К ОБВИНЕНИЮ</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen accusation-screen grain" id="accusationScreen" aria-label="Обвинение">
+      <div class="accusation-content">
+        <div class="big-stamp">ДЕЛО РАСКРЫТО</div>
+        <div class="accusation-inner">
+          <div class="clues-scroll" id="cluesScroll"></div>
+          <div class="verdict-box">
+            <strong>Вердикт:</strong> Убийца — Варвара Пахомова. Мотив: защита сестры.
+          </div>
+          <div class="result-actions" style="grid-template-columns:1fr 1fr; width:100%;">
+            <button class="result-btn" id="lawEndingBtn" style="background:#8b1a1a;color:#fff;">🔴 ПЕРЕДАТЬ В СУД</button>
+            <button class="result-btn" id="conscienceEndingBtn" style="background:#8b6914;color:var(--ink);">🟡 ЗАКРЫТЬ ДЕЛО</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen ending-screen law grain" id="endingLawScreen" aria-label="Концовка закон">
+      <div class="ending-content">
+        <div class="ending-top">ВЫ ВЫБРАЛИ ЗАКОН</div>
+        <img src="img-ending-a.png" alt="Концовка закона" class="ending-img" id="endingLawImg" onerror="window.__imgFail(this)" />
+        <div class="placeholder" id="endingLawPlaceholder">КОНЦОВКА</div>
+        <div class="ending-lines" id="endingLawLines"></div>
+        <div class="ending-quote">«Справедливость и закон — разные дороги в одну сторону»</div>
+        <div class="rank-badge" id="endingLawRank"></div>
+        <button class="play-again-btn" id="playAgainLawBtn">ИГРАТЬ СНОВА</button>
+      </div>
+    </section>
+
+    <section class="screen ending-screen conscience grain" id="endingConscienceScreen" aria-label="Концовка совесть">
+      <div class="ending-content">
+        <div class="ending-top gold">ВЫ ВЫБРАЛИ СОВЕСТЬ</div>
+        <img src="img-ending-b.png" alt="Концовка совести" class="ending-img" id="endingConscienceImg" onerror="window.__imgFail(this)" />
+        <div class="placeholder" id="endingConsciencePlaceholder">КОНЦОВКА</div>
+        <div class="ending-lines" id="endingConscienceLines"></div>
+        <div class="ending-quote">«Иногда следователь должен знать, когда перестать искать»</div>
+        <div class="rank-badge" id="endingConscienceRank"></div>
+        <button class="play-again-btn" id="playAgainConscienceBtn">ИГРАТЬ СНОВА</button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    (() => {
+      const screenIds = ['introScreen','titleScreen','dossierScreen','suspectsScreen','gameScreen','accusationScreen','endingLawScreen','endingConscienceScreen'];
+      const $ = (id) => document.getElementById(id);
+      const el = {};
+      screenIds.forEach((id) => el[id] = $(id));
+
+      const introVideo = $('introVideo');
+      const introPlaceholder = $('introPlaceholder');
+      const introLine1 = $('introLine1');
+      const introLine2 = $('introLine2');
+      const introLine3 = $('introLine3');
+      const introLine4 = $('introLine4');
+      const introTitle = $('introTitle');
+      const introSubtitle = $('introSubtitle');
+
+      const startInvestigationBtn = $('startInvestigationBtn');
+      const beginCaseBtn = $('beginCaseBtn');
+      const startCaseFromSuspectsBtn = $('startCaseFromSuspectsBtn');
+      const skipIntroBtn = $('skipIntroBtn');
+      const difficultySelect = $('difficultySelect');
+
+      const dossierClueCount = $('dossierClueCount');
+      const dossierDots = $('dossierDots');
+
+      const topSceneName = $('topSceneName');
+      const topDots = $('topDots');
+      const topCount = $('topCount');
+      const sceneBg = $('sceneBg');
+      const characterImg = $('characterImg');
+      const characterPlaceholder = $('characterPlaceholder');
+      const sceneCover = $('sceneCover');
+      const sceneCoverText = $('sceneCoverText');
+      const dialoguePanel = $('dialoguePanel');
+      const finalPanel = $('finalPanel');
+      const emotionTag = $('emotionTag');
+      const speechBubble = $('speechBubble');
+      const questionList = $('questionList');
+      const clueCard = $('clueCard');
+      const clueHeader = $('clueHeader');
+      const clueText = $('clueText');
+      const nextSceneBtn = $('nextSceneBtn');
+      const finalSpeech = $('finalSpeech');
+      const suspectList = $('suspectList');
+      const finalChoiceRow = $('finalChoiceRow');
+      const finalAccuseText = $('finalAccuseText');
+      const finalConfessionText = $('finalConfessionText');
+      const accusationBtn = $('accusationBtn');
+
+      const sudokuGrid = $('sudokuGrid');
+      const gridOverlay = $('gridOverlay');
+      const numberRow = $('numberRow');
+      const checkBtn = $('checkBtn');
+      const blockStamp = $('blockStamp');
+      const hintBtn = $('hintBtn');
+      const notesToggleBtn = $('notesToggleBtn');
+      const pencilIndicator = $('pencilIndicator');
+      let pencilMode = false;
+
+      const cluesScroll = $('cluesScroll');
+      const lawEndingBtn = $('lawEndingBtn');
+      const conscienceEndingBtn = $('conscienceEndingBtn');
+
+      const endingLawLines = $('endingLawLines');
+      const endingConscienceLines = $('endingConscienceLines');
+      const endingLawRank = $('endingLawRank');
+      const endingConscienceRank = $('endingConscienceRank');
+      const playAgainLawBtn = $('playAgainLawBtn');
+      const playAgainConscienceBtn = $('playAgainConscienceBtn');
+      const endingLawPlaceholder = $('endingLawPlaceholder');
+      const endingConsciencePlaceholder = $('endingConsciencePlaceholder');
+      const endingLawImg = $('endingLawImg');
+      const endingConscienceImg = $('endingConscienceImg');
+      const dossierPlaceholder = $('dossierPlaceholder');
+
+      const state = {
+        activeBlock: 0,
+        selectedCell: null,
+        currentScene: null,
+        clueLog: [],
+        perfectBlocks: 0,
+        blockData: []
+      };
+      let timers = new Set();
+      let introSkipped = false;
+      let currentScreen = 'introScreen';
+
+      const EMOTIONS = {
+        СПОКОЙНО: ['emotion-spokoyno', 'СПОКОЙНО'],
+        НЕРВНИЧАЕТ: ['emotion-nerv', 'НЕРВНИЧАЕТ'],
+        ЛЖЁТ: ['emotion-lzhet', 'ЛЖЁТ'],
+        СТРАХ: ['emotion-strah', 'СТРАХ'],
+        ШЁПОТ: ['emotion-shepot', 'ШЁПОТ'],
+        ДРУЖЕЛЮБНО: ['emotion-druzh', 'ДРУЖЕЛЮБНО'],
+        ПЬЯНЫЙ: ['emotion-pyanyy', 'ПЬЯНЫЙ'],
+        ХОЛОДНО: ['emotion-holodno', 'ХОЛОДНО'],
+        ВАЖНО: ['emotion-vazhno', 'ВАЖНО'],
+        ТИХО: ['emotion-tiho', 'ТИХО'],
+        СЕРЬЁЗНО: ['emotion-seryozno', 'СЕРЬЁЗНО'],
+        ЗНАЧИМО: ['emotion-vazhno', 'ЗНАЧИМО'],
+        МУДРО: ['emotion-mudro', 'МУДРО']
+      };
+
+      const scenes = [
+        { title: 'Место преступления', bg: 'bg-study.jpg', characterImg: 'img-aydarkhan.png', characterName: 'Следователь Айдархан Сейткали', characterAlt: 'Следователь Айдархан Сейткали', characterClass: 'left-lean', mode: 'hotspots', clueHeader: 'УЛИКА №1', clueText: 'Следы грязи у окна. Незваный гость входил той ночью.', hotspots: [ { label: '🍵 Чашка чая', response: 'Запах горький, незнакомый. Не из аптеки — что-то растительное. Степное.', emotion: 'ДРУГОЕ' }, { label: '👣 Следы у окна', response: 'УЛИКА: Грязные следы у окна. Кто-то входил с улицы той ночью.', emotion: 'ВАЖНО' }, { label: '📄 Бумага с цифрами', response: 'Странная записка с цифрами... Как головоломка.', emotion: 'СПОКОЙНО' } ] },
+        { title: 'Допрос вдовы', bg: 'bg-living.jpg', characterImg: 'img-varvara.png', characterName: 'Варвара Пахомова — вдова', characterAlt: 'Варвара Пахомова', emotionDefault: 'СПОКОЙНО', clueHeader: 'УЛИКА №2', clueText: 'В комнате вдовы — флакон духов из Ташкента. Тот же запах, что у отравленного чая.', questions: [ { text: '— Где вы были ночью?', response: '— Спала. Я всегда сплю крепко.', emotion: 'СПОКОЙНО' }, { text: '— Вы слышали крики?', response: '— Он часто кричал. Это был... обычный человек с необычным голосом.', emotion: 'ПАУЗА' }, { text: '— Вы любили мужа?', response: '— Это странный вопрос для следователя.', emotion: 'ХОЛОДНО' } ] },
+        { title: 'Зелёный базар', bg: 'bg-market.jpg', characterImg: 'img-trader.png', characterName: 'Старый торговец', characterAlt: 'Старый торговец', emotionDefault: 'ДРУЖЕЛЮБНО', clueHeader: 'УЛИКА №3', clueText: 'Мухамеджан-бай лгал об отъезде. Он был в городе той ночью.', questions: [ { text: '— Кто враги Пахомова?', response: '— У богатого человека враги везде. Но Мухамеджан-бай... он потерял триста голов скота.', emotion: 'ШЁПОТ' }, { text: '— Что говорят про бая?', response: '— Молчит. Но казахи говорят: бай не забывает долгов.', emotion: 'ШЁПОТ' }, { text: '— Кто был в городе той ночью?', response: '— Бай говорил — уехал в аул. Но я видел его лошадь у постоялого двора.', emotion: 'ВАЖНО' } ] },
+        { title: 'Аптека Рябова', bg: 'bg-pharmacy.jpg', characterImg: 'img-ryabov.png', characterName: 'Аркадий Рябов — аптекарь', characterAlt: 'Аркадий Рябов', emotionDefault: 'НЕРВНИЧАЕТ', clueHeader: 'УЛИКА №4', clueText: 'В журнале продаж — запись от имени Пахомова. Но почерк не его. Кто-то купил яд.', questions: [ { text: '— Продаёте мышьяк?', response: '— Только с разрешения доктора. Всё законно.', emotion: 'НЕРВНИЧАЕТ' }, { text: '— Пахомов что-то покупал?', response: '— Господин Пахомов... покупал. Говорил — от крыс.', emotion: 'ОТВОДИТ ВЗГЛЯД' }, { text: '— Кто ещё приходил?', response: '— ...долгая пауза... Была одна дама. Назвала имя Пахомова.', emotion: 'ЛЖЁТ' } ] },
+        { title: 'Трактир Иртышъ', bg: 'bg-tavern.jpg', characterImg: 'img-lazarev.png', characterName: 'Поручик Дмитрий Лазарев', characterAlt: 'Поручик Дмитрий Лазарев', emotionDefault: 'ПЬЯНЫЙ', clueHeader: 'УЛИКА №5', clueText: 'Тёмное пятно на рукаве мундира. Ушёл из трактира в час ночи. Дом Пахомова — десять минут пешком.', questions: [ { text: '— Вы ссорились с Пахомовым?', response: '— Мы обсуждали финансовый вопрос. Громко — да, я громкий человек.', emotion: 'ПЬЯНЫЙ' }, { text: '— О чём был разговор?', response: '— Долг. Я должен был ему денег. Теперь, видимо, не должен.', emotion: 'УХМЫЛКА' }, { text: '— Где вы были в полночь?', response: '— Здесь. Спросите хозяина. Хозяин подтверждает. Но ушёл Лазарев в час ночи.', emotion: 'ОТВОДИТ ВЗГЛЯД' } ] },
+        { title: 'Кухня', bg: 'bg-kitchen.jpg', characterImg: 'img-fatima.png', characterName: 'Фатима — служанка', characterAlt: 'Фатима', emotionDefault: 'МОЛЧИТ', clueHeader: 'УЛИКА №6', clueText: 'Варвара заварила чай сама. Хотя никогда этого не делала — ни разу за три года.', questions: [ { text: '— Ты приносила чай той ночью?', response: '— Да... как всегда.', emotion: 'ТИХО' }, { text: '— Кто заварил чай?', response: '— Я принесла. Но чай уже стоял на кухне. Готовый.', emotion: 'ВЗДРАГИВАЕТ' }, { text: '— Кто его приготовил? (по-персидски)', response: '— ...шёпот... Ханум. Госпожа сама.', emotion: 'СТРАХ' } ] },
+        { title: 'Письма из Ташкента', bg: 'bg-office.jpg', characterImg: null, characterName: null, characterAlt: null, mode: 'hotspots', clueHeader: 'УЛИКА №7', clueText: 'Три письма из Ташкента. Варвара готовилась заранее. Это не был импульс.', hotspots: [ { label: '✉️ Письмо первое', response: '«Он не отпустит тебя. Ты знаешь что делать.» Ташкент, сентябрь 1901.', emotion: 'СПОКОЙНО' }, { label: '✉️ Письмо второе', response: '«Деньги будут. Главное — не оставляй следов.»', emotion: 'ВАЖНО' }, { label: '✉️ Письмо третье — КЛЮЧЕВОЕ', response: '«После — приедь. Я буду ждать.» Дата: за неделю до убийства.', emotion: 'ЛЖЁТ', highlight: true } ] },
+        { title: 'Юрта лекаря', bg: 'bg-yurt.jpg', characterImg: 'img-healer.png', characterName: 'Старый лекарь', characterAlt: 'Старый лекарь', emotionDefault: 'МУДРО', clueHeader: 'УЛИКА №8', clueText: 'Чёрный джусан. Фатима выросла в казахском ауле. Она знала этот яд. И она любила Варвару как сестру.', questions: [ { text: '— Что это за яд?', response: '— Нюхает описание... Чёрный джусан. Горькая полынь с предгорий. Убивает медленно, за несколько часов.', emotion: 'СЕРЬЁЗНО' }, { text: '— Где его берут?', response: '— Зачем аптека? Любая казахская женщина знает это растение.', emotion: 'УХМЫЛКА' }, { text: '— Кто умеет его готовить?', response: '— Или русская женщина... если её научила казахская. Как подруга. Или сестра.', emotion: 'ЗНАЧИМО' } ] },
+        { title: 'Финальный допрос', bg: 'bg-office.jpg', characterImg: 'img-varvara-scared.png', characterName: 'Варвара Пахомова', characterAlt: 'Варвара Пахомова', emotionDefault: 'СТРАХ', mode: 'verdict', clueHeader: 'УЛИКА №9', clueText: 'Варвара призналась: она заварила чай из чёрного джусана, чтобы наказать Пахомова за судьбу сестры.', verdictTargets: [ { image: 'img-bay.png', name: 'Мухамеджан-бай', response: 'Вы хотели мести. Но ваша гордость не позволила бы яд. Вы не убийца.' }, { image: 'img-lazarev.png', name: 'Лазарев', response: 'Мотив есть. Но той ночью вы были слишком пьяны. Пятно на рукаве — чужая кровь, не Пахомова.' }, { image: 'img-ryabov.png', name: 'Рябов', response: 'Вы продали яд. Но не знали кому и зачем. Вы свидетель, не убийца.' }, { image: 'img-fatima.png', name: 'Фатима', response: 'Вы знали о яде. Вы помогли. Но вы делали это из любви, не из ненависти.' }, { image: 'img-varvara-scared.png', name: 'Варвара', response: 'ВЫ. Вы заварили чай из чёрного джусана. Письма это доказывают.', confession: ['— Он продал мою сестру в долговые работники. За карточный долг её мужа. Ей было шестнадцать лет.', '— Варвара впервые смотрит на Айдархана прямо в глаза.'] } ] }
+      ];
+
+      const showScreen = (id) => {
+        currentScreen = id;
+        screenIds.forEach((screenId) => el[screenId].classList.toggle('active', screenId === id));
+      };
+
+      const schedule = (fn, delay) => {
+        const timer = setTimeout(() => {
+          timers.delete(timer);
+          fn();
+        }, delay);
+        timers.add(timer);
+      };
+
+      const clearTimers = () => {
+        timers.forEach((t) => clearTimeout(t));
+        timers.clear();
+      };
+
+      const typewriter = (node, text, speed = 30) => {
+        node.textContent = '';
+        return new Promise((resolve) => {
+          let i = 0;
+          const tick = () => {
+            node.textContent = text.slice(0, i + 1);
+            i += 1;
+            if (i < text.length) setTimeout(tick, speed);
+            else resolve();
+          };
+          tick();
+        });
+      };
+
+      // Browser-safe sudoku shim: keeps required API if CDN script fails in file:// mode.
+      (() => {
+        if (window.sudoku && typeof window.sudoku.generate === 'function' && typeof window.sudoku.solve === 'function') return;
+        const base = [
+          [1,2,3,4,5,6,7,8,9],[4,5,6,7,8,9,1,2,3],[7,8,9,1,2,3,4,5,6],[2,3,4,5,6,7,8,9,1],[5,6,7,8,9,1,2,3,4],[8,9,1,2,3,4,5,6,7],[3,4,5,6,7,8,9,1,2],[6,7,8,9,1,2,3,4,5],[9,1,2,3,4,5,6,7,8]
+        ];
+        const shuffle = (arr) => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+        const makeSolved = () => {
+          const rowGroups = shuffle([0,1,2]);
+          const colGroups = shuffle([0,1,2]);
+          const rows = []; rowGroups.forEach((g) => shuffle([0,1,2]).forEach((o) => rows.push(g * 3 + o)));
+          const cols = []; colGroups.forEach((g) => shuffle([0,1,2]).forEach((o) => cols.push(g * 3 + o)));
+          const digits = shuffle([1,2,3,4,5,6,7,8,9]);
+          const map = new Map(digits.map((d, i) => [i + 1, d]));
+          return rows.map((r) => cols.map((c) => map.get(base[r][c])));
+        };
+        const isSafe = (board, row, col, value) => {
+          for (let i = 0; i < 9; i++) if (board[row][i] === value || board[i][col] === value) return false;
+          const br = Math.floor(row / 3) * 3; const bc = Math.floor(col / 3) * 3;
+          for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) if (board[br + r][bc + c] === value) return false;
+          return true;
+        };
+        const solveGrid = (board) => {
+          const grid = board.map((row) => row.slice());
+          const findEmpty = () => { for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) if (!grid[r][c]) return [r, c]; return null; };
+          const backtrack = () => {
+            const empty = findEmpty(); if (!empty) return true;
+            const [r, c] = empty;
+            for (const value of shuffle([1,2,3,4,5,6,7,8,9])) {
+              if (isSafe(grid, r, c, value)) { grid[r][c] = value; if (backtrack()) return true; grid[r][c] = 0; }
+            }
+            return false;
+          };
+          return backtrack() ? grid : null;
+        };
+        window.sudoku = {
+          generate(difficulty = 'easy') {
+            const solved = makeSolved();
+            const puzzle = solved.map((row) => row.slice());
+            const positions = shuffle(Array.from({ length: 81 }, (_, i) => i));
+            let removed = 0;
+            // removal targets by difficulty
+            const targets = { easy: 40, medium: 50, hard: 60 };
+            const maxRemove = targets[difficulty] || 40;
+            for (const pos of positions) {
+              if (removed >= maxRemove) break;
+              const r = Math.floor(pos / 9); const c = pos % 9; const prev = puzzle[r][c];
+              puzzle[r][c] = 0;
+              if (!solveGrid(puzzle)) puzzle[r][c] = prev; else removed++;
+            }
+            return puzzle.flat().map((v) => (v ? String(v) : '.')).join('');
+          },
+          solve(puzzleString) {
+            const chars = String(puzzleString || '').replace(/[^0-9.]/g, '').split('');
+            const board = Array.from({ length: 9 }, (_, r) => Array.from({ length: 9 }, (_, c) => {
+              const ch = chars[r * 9 + c];
+              return ch && ch !== '.' && ch !== '0' ? Number(ch) : 0;
+            }));
+            const solved = solveGrid(board);
+            return solved ? solved.flat().join('') : '';
+          }
+        };
+      })();
+
+      const buildBoardFromString = (str) => {
+        const chars = String(str || '').replace(/[^0-9.]/g, '').split('');
+        return Array.from({ length: 9 }, (_, r) => Array.from({ length: 9 }, (_, c) => {
+          const ch = chars[r * 9 + c];
+          return ch && ch !== '.' && ch !== '0' ? Number(ch) : 0;
+        }));
+      };
+      const extractBlock = (grid, blockIndex) => {
+        const blockRow = Math.floor(blockIndex / 3);
+        const blockCol = blockIndex % 3;
+        const result = [];
+        for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) result.push(grid[blockRow * 3 + r][blockCol * 3 + c]);
+        return result;
+      };
+      const getEmotion = (name) => EMOTIONS[name] || ['emotion-holodno', name || ''];
+
+      const buildBlocks = (difficulty = 'easy') => {
+        const puzzle = buildBoardFromString(window.sudoku.generate(difficulty));
+        const solution = buildBoardFromString(window.sudoku.solve(puzzle.flat().map((n) => (n ? n : '.')).join('')));
+        return scenes.map((scene, blockIndex) => {
+          const puzzleBlock = extractBlock(puzzle, blockIndex);
+          const solutionBlock = extractBlock(solution, blockIndex);
+          return {
+            ...scene,
+            blockIndex,
+            puzzleBlock,
+            solutionBlock,
+            state: solutionBlock.map((value, i) => ({ value: puzzleBlock[i] || 0, given: Boolean(puzzleBlock[i]), candidates: [] })),
+            solved: false,
+            errorCount: 0
+          };
+        });
+      };
+
+      const renderProgress = () => {
+        dossierClueCount.textContent = String(state.clueLog.length);
+        dossierDots.textContent = '●'.repeat(state.clueLog.length) + '○'.repeat(9 - state.clueLog.length);
+        topCount.textContent = `Улика ${state.clueLog.length} из 9`;
+        topDots.innerHTML = Array.from({ length: 9 }, (_, i) => {
+          if (i < state.activeBlock || (state.blockData[i] && state.blockData[i].solved)) return '<span class="dot-solved">●</span>';
+          if (i === state.activeBlock) return state.blockData[i] && state.blockData[i].solved ? '<span class="dot-solved">●</span>' : '<span class="dot-current">●</span>';
+          return '<span class="dot-future">○</span>';
+        }).join(' ');
+      };
+
+      const createBoard = () => {
+        sudokuGrid.innerHTML = '';
+        sudokuGrid.style.display = 'grid';
+        sudokuGrid.style.gridTemplateColumns = 'repeat(9, 52px)';
+        sudokuGrid.style.gridTemplateRows = 'repeat(9, 52px)';
+        sudokuGrid.style.gap = '0';
+        sudokuGrid.style.width = 'fit-content';
+
+        for (let row = 0; row < 9; row++) {
+          for (let col = 0; col < 9; col++) {
+            const index = row * 9 + col;
+            const blockIndex = Math.floor(row / 3) * 3 + Math.floor(col / 3);
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.dataset.index = String(index);
+            cell.dataset.row = String(row);
+            cell.dataset.col = String(col);
+            cell.dataset.block = String(blockIndex);
+            if (row % 3 === 0) cell.classList.add('block-edge-top');
+            if (row % 3 === 2) cell.classList.add('block-edge-bottom');
+            if (col % 3 === 0) cell.classList.add('block-edge-left');
+            if (col % 3 === 2) cell.classList.add('block-edge-right');
+            cell.addEventListener('click', () => selectCell(index));
+            // value layer + контейнер для заметок-кандидатов (1..9)
+            const valueLayer = document.createElement('div');
+            valueLayer.className = 'cell-value';
+            cell.appendChild(valueLayer);
+            const cand = document.createElement('div');
+            cand.className = 'candidates';
+            cand.innerHTML = Array.from({ length: 9 }, (_, i) => `<span class="candidate" data-c="${i+1}"></span>`).join('');
+            cell.appendChild(cand);
+            sudokuGrid.appendChild(cell);
+          }
+        }
+
+        numberRow.innerHTML = '';
+        for (let n = 1; n <= 9; n++) {
+          const btn = document.createElement('button');
+          btn.className = 'number-btn';
+          btn.textContent = String(n);
+          btn.addEventListener('click', () => fillSelected(n));
+          numberRow.appendChild(btn);
+        }
+      };
+
+      const renderBoard = () => {
+        if (!state.currentScene) return;
+        sudokuGrid.querySelectorAll('.cell').forEach((cell) => {
+          const row = Number(cell.dataset.row);
+          const col = Number(cell.dataset.col);
+          const blockIndex = Number(cell.dataset.block);
+          const block = state.blockData[blockIndex];
+          const localIndex = (row % 3) * 3 + (col % 3);
+          const cellState = block.state[localIndex];
+          const valueEl = cell.querySelector('.cell-value');
+          if (valueEl) valueEl.textContent = cellState.value ? String(cellState.value) : '';
+          cell.classList.toggle('given', cellState.given);
+          cell.classList.toggle('selected', state.selectedCell === Number(cell.dataset.index) && blockIndex === state.activeBlock && !cellState.given);
+          // выделение активного 3x3 блока
+          cell.classList.toggle('active-block', blockIndex === state.activeBlock);
+          cell.classList.remove('error', 'success');
+          // candidates rendering
+          const candEl = cell.querySelector('.candidates');
+          if (candEl) {
+            if (cellState.value) {
+              candEl.style.display = 'none';
+            } else {
+              candEl.style.display = 'grid';
+              candEl.querySelectorAll('.candidate').forEach((span) => {
+                const n = Number(span.dataset.c);
+                span.textContent = cellState.candidates && cellState.candidates.includes(n) ? String(n) : '';
+              });
+            }
+          }
+        });
+
+        numberRow.querySelectorAll('button').forEach((btn) => btn.disabled = state.currentScene.solved);
+        renderProgress();
+      };
+
+      const selectCell = (index) => {
+        if (!state.currentScene || state.currentScene.solved) return;
+        const cell = sudokuGrid.querySelector(`.cell[data-index="${index}"]`);
+        if (!cell || Number(cell.dataset.block) !== state.activeBlock) return;
+        const row = Number(cell.dataset.row);
+        const col = Number(cell.dataset.col);
+        const localIndex = (row % 3) * 3 + (col % 3);
+        if (state.currentScene.state[localIndex].given) return;
+        state.selectedCell = index;
+        renderBoard();
+      };
+
+      const fillSelected = (value) => {
+        if (!state.currentScene || state.currentScene.solved || state.selectedCell === null) return;
+        const cell = sudokuGrid.querySelector(`.cell[data-index="${state.selectedCell}"]`);
+        if (!cell || Number(cell.dataset.block) !== state.activeBlock) return;
+        const row = Number(cell.dataset.row);
+        const col = Number(cell.dataset.col);
+        const localIndex = (row % 3) * 3 + (col % 3);
+        const cellState = state.currentScene.state[localIndex];
+        if (cellState.given) return;
+        if (pencilMode) {
+          // toggle candidate
+          const idx = cellState.candidates ? cellState.candidates.indexOf(value) : -1;
+          if (!cellState.candidates) cellState.candidates = [];
+          if (idx === -1) cellState.candidates.push(value);
+          else cellState.candidates.splice(idx, 1);
+        } else {
+          // set value and clear candidates
+          cellState.value = value;
+          cellState.candidates = [];
+        }
+        renderBoard();
+      };
+
+      const goToDossier = () => showScreen('dossierScreen');
+      const goToSuspects = () => showScreen('suspectsScreen');
+      const goToGame = () => {
+        state.perfectBlocks = 0;
+        state.selectedCell = null;
+        state.clueLog = [];
+        const diff = (difficultySelect && difficultySelect.value) || 'easy';
+        state.blockData = buildBlocks(diff);
+        createBoard();
+        showScreen('gameScreen');
+        loadScene(0);
+        renderProgress();
+      };
+
+      const hideDialogueExtras = () => {
+        finalChoiceRow.classList.add('hidden');
+        finalConfessionText.classList.add('hidden');
+        finalAccuseText.textContent = '';
+        finalConfessionText.textContent = '';
+        clueCard.classList.remove('show');
+        nextSceneBtn.classList.add('hidden');
+        questionList.innerHTML = '';
+      };
+
+      const showEmotion = (name) => {
+        const mapped = getEmotion(name);
+        emotionTag.className = `emotion-tag ${mapped[0]}`;
+        emotionTag.textContent = mapped[1];
+        emotionTag.classList.remove('hidden');
+      };
+
+      const setSceneMeta = (scene) => {
+        topSceneName.textContent = scene.title;
+        sceneBg.src = scene.bg;
+        if (scene.characterImg) {
+          characterImg.src = scene.characterImg;
+          characterImg.alt = scene.characterAlt || scene.characterName || 'Персонаж';
+          characterImg.classList.remove('hidden');
+          characterImg.classList.toggle('left-lean', Boolean(scene.characterClass));
+          characterPlaceholder.classList.remove('show');
+        } else {
+          characterImg.classList.add('hidden');
+          characterPlaceholder.textContent = 'ПИСЬМА И УЛИКИ';
+          characterPlaceholder.classList.add('show');
+        }
+      };
+
+      function loadScene(index) {
+        state.activeBlock = index;
+        state.selectedCell = null;
+        state.currentScene = state.blockData[index];
+        hideDialogueExtras();
+        setSceneMeta(state.currentScene);
+        sceneCover.classList.remove('hidden');
+        sceneCoverText.textContent = 'Реши блок судоку →';
+        dialoguePanel.classList.add('hidden');
+        finalPanel.classList.add('hidden');
+        blockStamp.classList.remove('show');
+        // ensure pencil mode is off for new scene and hide indicator
+        pencilMode = false;
+        if (pencilIndicator) pencilIndicator.style.display = 'none';
+        renderBoard();
+      }
+
+      const unlockScene = () => {
+        sceneCover.classList.add('hidden');
+        if (state.currentScene.mode === 'verdict') {
+          buildVerdictScene();
+          finalPanel.classList.remove('hidden');
+          return;
+        }
+        dialoguePanel.classList.remove('hidden');
+        buildDialogueScene();
+      };
+
+      const addQuestionButtons = (items, responseMode = 'questions') => {
+        questionList.innerHTML = '';
+        items.forEach((item) => {
+          const btn = document.createElement('button');
+          btn.className = responseMode === 'hotspots' ? 'hotspot-btn' : 'question-btn';
+          btn.textContent = item.label || item.text;
+          btn.addEventListener('click', async () => {
+            if (btn.classList.contains('used')) return;
+            btn.classList.add('used');
+            showEmotion(item.emotion || state.currentScene.emotionDefault || 'СПОКОЙНО');
+            if (item.highlight) { btn.style.borderColor = 'var(--red)'; btn.style.color = 'var(--red)'; }
+            await typewriter(speechBubble, item.response, 28);
+            if ([...questionList.children].every((child) => child.classList.contains('used'))) {
+              showClueCard();
+            }
+          });
+          questionList.appendChild(btn);
+        });
+      };
+
+      const buildDialogueScene = () => {
+        speechBubble.textContent = state.currentScene.mode === 'hotspots' ? 'Осмотрите улики и запомните детали.' : 'Задайте вопросы свидетелю.';
+        showEmotion(state.currentScene.emotionDefault || 'СПОКОЙНО');
+        addQuestionButtons(state.currentScene.hotspots || state.currentScene.questions || [], state.currentScene.mode === 'hotspots' ? 'hotspots' : 'questions');
+      };
+
+      const showClueCard = () => {
+        clueHeader.textContent = state.currentScene.clueHeader || `УЛИКА №${state.activeBlock + 1}`;
+        clueText.textContent = state.currentScene.clueText;
+        clueCard.classList.add('show');
+        nextSceneBtn.classList.remove('hidden');
+        if (!state.clueLog.some((entry) => entry.header === state.currentScene.clueHeader)) {
+          state.clueLog.push({ header: state.currentScene.clueHeader, text: state.currentScene.clueText });
+          renderProgress();
+        }
+      };
+
+      const buildVerdictScene = () => {
+        finalPanel.classList.remove('hidden');
+        finalSpeech.textContent = 'Выберите подозреваемого.';
+        suspectList.innerHTML = '';
+        finalChoiceRow.classList.add('hidden');
+        finalAccuseText.textContent = '';
+        finalConfessionText.textContent = '';
+        finalConfessionText.classList.add('hidden');
+
+        state.currentScene.verdictTargets.forEach((target) => {
+          const card = document.createElement('button');
+          card.className = 'suspect-card';
+          card.innerHTML = `
+            <img src="${target.image}" alt="${target.name}" onerror="window.__imgFail(this)" />
+            <div class="suspect-name">${target.name}</div>
+          `;
+          card.addEventListener('click', () => {
+            finalChoiceRow.classList.remove('hidden');
+            finalAccuseText.innerHTML = target.response.includes('ВЫ.') ? `<span class="accuse-text">${target.response}</span>` : target.response;
+            if (target.confession) {
+              finalConfessionText.classList.remove('hidden');
+              finalConfessionText.innerHTML = target.confession.map((line) => `<div>${line}</div>`).join('');
+              finalConfessionText.classList.add('confession');
+              accusationBtn.classList.remove('hidden');
+            }
+          });
+          suspectList.appendChild(card);
+        });
+      };
+
+      const renderClues = () => {
+        cluesScroll.innerHTML = '';
+        const source = state.clueLog.length ? state.clueLog : scenes.map((scene, i) => ({ header: scene.clueHeader || `УЛИКА №${i + 1}`, text: scene.clueText }));
+        source.slice(0, 9).forEach((clue, i) => {
+          const card = document.createElement('div');
+          card.className = 'small-clue';
+          card.innerHTML = `<div class="result-clue-header">${clue.header || `УЛИКА №${i + 1}`}</div><div>${clue.text}</div>`;
+          cluesScroll.appendChild(card);
+        });
+      };
+
+      const scoreRank = () => {
+        if (state.perfectBlocks === 9) return '🏆 Лучший следователь Верного';
+        if (state.perfectBlocks >= 6) return '⭐ Способный детектив';
+        return '📋 Начинающий следак';
+      };
+
+      const renderEnding = (kind) => {
+        const lines = kind === 'law'
+          ? ['Варвара арестована.', 'Фатима успела уехать до рассвета.', 'Айдархан смотрит на горы Тянь-Шаня.']
+          : ['Письмо сожжено.', 'Официально — несчастный случай.', 'Варвара уехала в Ташкент на рассвете.'];
+        const linesEl = kind === 'law' ? endingLawLines : endingConscienceLines;
+        const rankEl = kind === 'law' ? endingLawRank : endingConscienceRank;
+        const imgEl = kind === 'law' ? endingLawImg : endingConscienceImg;
+        const placeholderEl = kind === 'law' ? endingLawPlaceholder : endingConsciencePlaceholder;
+        linesEl.innerHTML = '';
+        rankEl.textContent = `${state.perfectBlocks} из 9 блоков решено без ошибок — ${scoreRank()}`;
+        placeholderEl.classList.toggle('show', imgEl.classList.contains('hidden'));
+        lines.forEach((line, index) => {
+          const el = document.createElement('div');
+          el.className = 'ending-line';
+          el.textContent = line;
+          linesEl.appendChild(el);
+          setTimeout(() => el.classList.add('show'), index * 1000);
+        });
+      };
+
+      const flashError = () => {
+        sudokuGrid.querySelectorAll('.cell').forEach((cell) => {
+          if (Number(cell.dataset.block) === state.activeBlock && !cell.classList.contains('given')) {
+            cell.classList.add('error');
+            setTimeout(() => cell.classList.remove('error'), 450);
+          }
+        });
+      };
+
+      const flashSuccess = () => {
+        sudokuGrid.querySelectorAll('.cell').forEach((cell) => { if (Number(cell.dataset.block) === state.activeBlock) cell.classList.add('success'); });
+        setTimeout(() => sudokuGrid.querySelectorAll('.cell').forEach((cell) => cell.classList.remove('success')), 800);
+        blockStamp.classList.add('show');
+      };
+
+      const checkCurrentBlock = () => {
+        if (!state.currentScene || state.currentScene.solved) return;
+        const seen = new Set();
+        let allFilled = true;
+        let allCorrect = true;
+        state.currentScene.state.forEach((cell, i) => {
+          if (!cell.value) allFilled = false;
+          if (cell.value && cell.value !== state.currentScene.solutionBlock[i]) allCorrect = false;
+          if (cell.value) {
+            const key = String(cell.value);
+            if (seen.has(key)) allCorrect = false;
+            seen.add(key);
+          }
+        });
+
+        if (!allFilled || !allCorrect) {
+          state.currentScene.errorCount += 1;
+          flashError();
+          return;
+        }
+
+        state.currentScene.solved = true;
+        if (state.currentScene.errorCount === 0) state.perfectBlocks += 1;
+        flashSuccess();
+        state.clueLog.push({ header: state.currentScene.clueHeader, text: state.currentScene.clueText });
+        renderProgress();
+        unlockScene();
+      };
+
+      // Быстрая подсказка: подставляет первый незаполненный ответ в текущем блоке
+      function provideHint() {
+        if (!state.currentScene || state.currentScene.solved) return;
+        for (let i = 0; i < state.currentScene.state.length; i++) {
+          const cellState = state.currentScene.state[i];
+          if (!cellState.value) {
+            const correct = state.currentScene.solutionBlock[i];
+            cellState.value = correct;
+            cellState.candidates = [];
+            // пометить ячейку подсказкой визуально
+            const allCells = Array.from(sudokuGrid.querySelectorAll('.cell'));
+            const target = allCells.find((c) => Number(c.dataset.block) === state.activeBlock && ((Number(c.dataset.row) % 3) * 3 + (Number(c.dataset.col) % 3)) === i);
+            if (target) {
+              target.classList.add('hint');
+              setTimeout(() => target.classList.remove('hint'), 1200);
+            }
+            renderBoard();
+            return;
+          }
+        }
+      }
+
+      const advanceScene = () => {
+        clueCard.classList.remove('show');
+        if (state.activeBlock < scenes.length - 1) {
+          loadScene(state.activeBlock + 1);
+        } else {
+          showScreen('accusationScreen');
+          renderClues();
+        }
+      };
+
+      const initIntro = () => {
+        const lines = [
+          [introLine1, 'Верный. Октябрь 1901 года.', 0],
+          [introLine2, 'Купец Пахомов найден мёртвым.', 2000],
+          [introLine3, 'Яд в чае. Следов взлома нет.', 4000],
+          [introLine4, 'Вас назначили вести это дело.', 6000]
+        ];
+        lines.forEach(([node, text, delay]) => {
+          schedule(() => { node.classList.add('show'); typewriter(node, text, 34); }, delay);
+        });
+        schedule(() => introTitle.classList.add('show'), 8000);
+        schedule(() => introSubtitle.classList.add('show'), 9000);
+        schedule(() => { if (!introSkipped) goToTitle(); }, 10000);
+      };
+
+      const goToTitle = () => { clearTimers(); showScreen('titleScreen'); };
+
+      const bindEvents = () => {
+        skipIntroBtn.addEventListener('click', () => { introSkipped = true; goToGame(); });
+        introVideo.addEventListener('error', () => introPlaceholder.classList.add('show'));
+        introVideo.addEventListener('ended', () => { if (!introSkipped) goToTitle(); });
+
+        startInvestigationBtn.addEventListener('click', goToDossier);
+        beginCaseBtn.addEventListener('click', goToSuspects);
+        startCaseFromSuspectsBtn.addEventListener('click', goToGame);
+        checkBtn.addEventListener('click', checkCurrentBlock);
+        if (hintBtn) hintBtn.addEventListener('click', provideHint);
+        if (notesToggleBtn) notesToggleBtn.addEventListener('click', () => {
+          pencilMode = !pencilMode;
+          if (pencilIndicator) pencilIndicator.style.display = pencilMode ? 'inline-block' : 'none';
+          // visual cue on button
+          notesToggleBtn.style.opacity = pencilMode ? '1' : '0.75';
+        });
+        nextSceneBtn.addEventListener('click', advanceScene);
+        accusationBtn.addEventListener('click', () => showScreen('accusationScreen'));
+        lawEndingBtn.addEventListener('click', () => { showScreen('endingLawScreen'); renderEnding('law'); });
+        conscienceEndingBtn.addEventListener('click', () => { showScreen('endingConscienceScreen'); renderEnding('conscience'); });
+        playAgainLawBtn.addEventListener('click', () => location.reload());
+        playAgainConscienceBtn.addEventListener('click', () => location.reload());
+      };
+
+      window.__imgFail = (img) => {
+        img.classList.add('hidden');
+        const wrap = img.parentElement;
+        if (!wrap) return;
+        const placeholder = wrap.querySelector('.placeholder');
+        if (placeholder) placeholder.classList.add('show');
+      };
+
+      bindEvents();
+      state.blockData = buildBlocks((difficultySelect && difficultySelect.value) || 'easy');
+      createBoard();
+      showScreen('introScreen');
+      initIntro();
+      renderProgress();
+
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && currentScreen === 'introScreen') introPlaceholder.classList.remove('show');
+      });
+    })();
+  </script>
+</body>
+</html>
